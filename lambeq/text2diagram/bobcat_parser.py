@@ -291,7 +291,7 @@ class BobcatParser(CCGParser):
                 try:
                     sentence_input = self._prepare_sentence(sent, tags)
                     result = self.parser(sentence_input)
-                    trees.append(self._build_ccgtree(result[0]))
+                    trees.append(self._build_ccgtree(result[0], result))
                 except Exception as e:
                     if suppress_exceptions:
                         trees.append(None)
@@ -327,15 +327,18 @@ class BobcatParser(CCGParser):
             return result << argument if cat.fwd else argument >> result
 
     @staticmethod
-    def _build_ccgtree(tree: ParseTree) -> CCGTree:
+    def _build_ccgtree(tree: ParseTree, result) -> CCGTree:
         """Transform a Bobcat parse tree into a `CCGTree`."""
 
-        children = [BobcatParser._build_ccgtree(child)
+        children = [BobcatParser._build_ccgtree(child, result)
                     for child in filter(None, (tree.left, tree.right))]
-        return CCGTree(text=tree.word if tree.is_leaf else None,
-                       rule=CCGRule(tree.rule.name),
-                       biclosed_type=BobcatParser._to_biclosed(tree.cat),
-                       children=children)
+        ret = CCGTree(text=tree.word if tree.is_leaf else None,
+                      rule=CCGRule(tree.rule.name),
+                      biclosed_type=BobcatParser._to_biclosed(tree.cat),
+                      children=children)
+        ret.original = tree
+        ret.deps = result.deps(tree)[0]
+        return ret
 
     @staticmethod
     def available_models() -> list[str]:
