@@ -325,3 +325,64 @@ class StronglyEntanglingAnsatz(CircuitAnsatz):
             for j in range(n_qubits):
                 circuit = circuit.CX(j, (j+step) % n_qubits)
         return circuit
+
+
+class Sim4Ansatz(CircuitAnsatz):
+    """Sim4 ansatz.
+    """
+
+    def __init__(self,
+                 ob_map: Mapping[Ty, int],
+                 n_layers: int,
+                 n_single_qubit_params: int = 3,
+                 ranges: Optional[list[int]] = None,
+                 discard: bool = False) -> None:
+        """Instantiate a strongly entangling ansatz.
+
+        Parameters
+        ----------
+        ob_map : dict
+            A mapping from :py:class:`discopy.rigid.Ty` to the number of
+            qubits it uses in a circuit.
+        n_layers : int
+            The number of circuit layers used by the ansatz.
+        n_single_qubit_params : int, default: 3
+            The number of single qubit rotations used by the ansatz.
+        ranges : list of int, optional
+            The range of the CNOT gate between wires in each layer. By
+            default, the range starts at one (i.e. adjacent wires) and
+            increases by one for each subsequent layer.
+        discard : bool, default: False
+            Discard open wires instead of post-selecting.
+
+        """
+        super().__init__(ob_map,
+                         n_layers,
+                         n_single_qubit_params,
+                         self.circuit,
+                         discard,
+                         [Rx, Rz])
+        self.ranges = ranges
+
+        if self.ranges is not None and len(self.ranges) != self.n_layers:
+            raise ValueError('The number of ranges must match the number of '
+                             'layers.')
+
+    def params_shape(self, n_qubits: int) -> tuple[int, ...]:
+        return (self.n_layers, 3 * n_qubits - 1)
+
+    def circuit(self, n_qubits: int, params: np.ndarray) -> Circuit:
+        circuit = Id(n_qubits)
+
+        for thetas in params:
+            circuit >>= Id().tensor(*map(Rx, thetas[:n_qubits]))
+            circuit >>= Id().tensor(*map(Rz,
+                                         thetas[n_qubits:2 * n_qubits]))
+
+            crxs = Id(n_qubits)
+            for i in range(n_qubits - 1):
+                crxs = crxs.CRx(thetas[2 * n_qubits + i], i, i + 1)
+
+            circuit >>= crxs
+
+    return circuit  # type: ignore[return-value]
