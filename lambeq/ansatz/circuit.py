@@ -385,4 +385,4 @@ class Sim4Ansatz(CircuitAnsatz):
 
             circuit >>= crxs
 
-    return circuit  # type: ignore[return-value]
+        return circuit  # type: ignore[return-value]
